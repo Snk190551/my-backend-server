@@ -12,11 +12,30 @@ const port = process.env.PORT || 3000; // กำหนด Port ที่ Backend
 // Middleware:
 // อนุญาตให้ Frontend สามารถส่ง Request มายัง Backend ได้ (สำคัญมากสำหรับ CORS)
 // กำหนดค่า CORS ให้ชัดเจนเพื่ออนุญาต Frontend ของคุณ
-app.use(cors({
-    origin: 'https://matherror.netlify.app',
-    methods: ['GET', 'POST', 'PUT', 'DELETE'], // อนุญาต Method ที่จำเป็น
-    allowedHeaders: ['Content-Type', 'Authorization'] // อนุญาต Header ที่จำเป็น
-}));
+ app.use((req, res, next) => {
+        // กำหนด Origin ที่อนุญาต
+        res.setHeader('Access-Control-Allow-Origin', 'https://matherror.netlify.app');
+        // กำหนด HTTP Methods ที่อนุญาต
+        res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+        // กำหนด Headers ที่อนุญาตให้ Frontend ส่งมาได้
+        res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+        // จัดการ Preflight Request (OPTIONS method)
+        // เบราว์เซอร์จะส่ง OPTIONS Request มาก่อน Request จริง
+        if (req.method === 'OPTIONS') {
+            // ส่ง Status 200 กลับไปทันที เพื่อบอกเบราว์เซอร์ว่าอนุญาต
+            return res.sendStatus(200);
+        }
+        // เรียก next() เพื่อส่ง Request ไปยัง Middleware หรือ Route ถัดไป
+        next();
+    });
+
+    // ใช้ body-parser สำหรับแปลง Request Body ที่เป็น JSON
+    // ควรอยู่หลังจาก CORS middleware เพื่อให้ Request Body ถูก Parse ก่อนที่ Route จะทำงาน
+    app.use(bodyParser.json());
+
+    // กำหนดค่า bcrypt: saltRounds คือความซับซ้อนในการเข้ารหัส ยิ่งสูงยิ่งปลอดภัย แต่ใช้เวลานานขึ้น
+    const saltRounds = 10;
 // ใช้ body-parser สำหรับแปลง Request Body ที่เป็น JSON
 app.use(bodyParser.json());
 
