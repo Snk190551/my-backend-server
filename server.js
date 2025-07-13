@@ -1,7 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const nodemailer = require('nodemailer'); // นำเข้า Nodemailer
-const bodyParser = require('body-parser'); // นำเข้า body-parser (ถ้าใช้)
+const bodyParser = require('body-parser'); // นำเข้า body-parser
 
 const app = express(); // สร้าง Instance ของ Express Application
 const port = 3000; // กำหนด Port ที่ Backend Server จะทำงาน
@@ -16,9 +16,7 @@ app.use(bodyParser.json());
 // app.use(express.json());
 
 // กำหนดค่า Nodemailer transporter
-// คุณจะต้องเปิด "App passwords" ใน Google Account ของคุณ
-// ดูรายละเอียดเพิ่มเติมได้ที่: https://myaccount.google.com/security -> App passwords
-// และตั้งค่า 2-Step Verification ก่อน
+// ดึงค่าจาก Environment Variables ที่คุณจะตั้งค่าใน Render
 const transporter = nodemailer.createTransport({
     service: 'gmail',
     auth: {
@@ -26,14 +24,6 @@ const transporter = nodemailer.createTransport({
         pass: process.env.EMAIL_PASS  // ดึงจาก Environment Variable ชื่อ EMAIL_PASS
     }
 });
-
-// ในส่วนของ mailOptions.from ด้วยเช่นกัน
-const mailOptions = {
-    from: process.env.EMAIL_USER, // ต้องตรงกับ user ใน transporter
-    to: email,
-    subject: 'คำขอรีเซ็ตรหัสผ่านของคุณ',
-    html: `...`
-};
 
 // ************ Routes (เส้นทาง API) ************
 
@@ -80,7 +70,7 @@ app.post('/api/login', (req, res) => {
 
 // Route สำหรับการลืมรหัสผ่าน (พร้อมส่งอีเมลด้วย Nodemailer)
 app.post('/api/forgot-password', (req, res) => {
-    const { email } = req.body;
+    const { email } = req.body; // ตัวแปร 'email' ถูกประกาศและมีค่าตรงนี้
     console.log(`Received forgot password request for: ${email}`);
 
     // *** 1. ตรวจสอบว่าอีเมลมีอยู่ในฐานข้อมูลจริงหรือไม่ ***
@@ -97,12 +87,14 @@ app.post('/api/forgot-password', (req, res) => {
     // ในแอปจริง: คุณจะสร้าง token ที่ปลอดภัยกว่านี้ (เช่น UUID หรือ JWT) และเก็บพร้อมวันหมดอายุใน DB
 
     // สร้างลิงก์รีเซ็ต
-    // **สำคัญ:** http://127.0.0.1:5500 คือ URL ของ Frontend ของคุณ!
-    const resetLink = `http://127.0.0.1:5500/reset.html?token=${resetToken}`;
+    // **สำคัญ:** เปลี่ยน 'https://matherror.netlify.app/' เป็น URL จริงของ Frontend ของคุณที่ได้จาก Netlify
+    // ตรวจสอบให้แน่ใจว่าไม่มี // ซ้ำกัน
+    const resetLink = `https://matherror.netlify.app/reset.html?token=${resetToken}`;
 
+    // *** โค้ด mailOptions และ transporter.sendMail() ต้องอยู่ตรงนี้ ***
     const mailOptions = {
-        from: 'tulyawat2008@gmail.com', // ต้องตรงกับ user ใน transporter
-        to: email, // อีเมลของผู้ใช้ที่ขอรีเซ็ต
+        from: process.env.EMAIL_USER, // ดึงจาก Environment Variable
+        to: email, // ตอนนี้ 'email' มีค่าแล้ว
         subject: 'คำขอรีเซ็ตรหัสผ่านของคุณ',
         html: `
             <p>คุณได้ส่งคำขอรีเซ็ตรหัสผ่านสำหรับบัญชีของคุณ</p>
@@ -122,6 +114,34 @@ app.post('/api/forgot-password', (req, res) => {
         }
     });
 });
+
+// Route สำหรับการตั้งรหัสผ่านใหม่
+app.post('/api/reset-password', (req, res) => {
+    const { token, newPassword } = req.body;
+    console.log(`Received password reset request for token: ${token}`);
+    console.log(`New password: ${newPassword}`);
+
+    // *** ในส่วนนี้คือ Logic จริงๆ ที่ Backend ต้องทำ: ***
+    // 1. **ตรวจสอบ Token:** ค้นหา Token นี้ในฐานข้อมูลของคุณ
+    //    - ตรวจสอบว่า Token มีอยู่จริง
+    //    - ตรวจสอบว่า Token ยังไม่หมดอายุ
+    //    - ตรวจสอบว่า Token ตรงกับผู้ใช้ที่ถูกต้อง
+    // 2. **ถ้า Token ถูกต้อง:**
+    //    a. **เข้ารหัสรหัสผ่านใหม่ (Hash newPassword)** ด้วย bcrypt ก่อนเก็บ
+    //    b. **อัปเดตรหัสผ่านของผู้ใช้** ในฐานข้อมูล
+    //    c. **ลบ Token ออกจากฐานข้อมูล** หรือทำเครื่องหมายว่าใช้ไปแล้ว เพื่อป้องกันการใช้ซ้ำ
+    // 3. ส่งสถานะการตอบกลับไป Frontend
+    // **********************************************************************
+
+    // *** สำหรับการทดสอบตอนนี้ เราจะสมมติว่า Token ถูกต้องเสมอ ***
+    if (token && newPassword && newPassword.length >= 4) { // ตรวจสอบความยาวรหัสผ่านขั้นต่ำ
+        console.log(`Password for user with token ${token} would be reset to ${newPassword}`);
+        return res.status(200).json({ message: 'รีเซ็ตรหัสผ่านสำเร็จ (จำลอง)!' });
+    } else {
+        return res.status(400).json({ message: 'ข้อมูลไม่ถูกต้อง. โปรดตรวจสอบ Token และรหัสผ่านใหม่.' });
+    }
+});
+
 
 // ************ เริ่ม Server ************
 app.listen(port, () => {
