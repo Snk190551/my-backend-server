@@ -36,11 +36,6 @@ const port = process.env.PORT || 3000; // กำหนด Port ที่ Backend
 
     // กำหนดค่า bcrypt: saltRounds คือความซับซ้อนในการเข้ารหัส ยิ่งสูงยิ่งปลอดภัย แต่ใช้เวลานานขึ้น
     const saltRounds = 10;
-// ใช้ body-parser สำหรับแปลง Request Body ที่เป็น JSON
-app.use(bodyParser.json());
-
-// กำหนดค่า bcrypt: saltRounds คือความซับซ้อนในการเข้ารหัส ยิ่งสูงยิ่งปลอดภัย แต่ใช้เวลานานขึ้น
-const saltRounds = 10;
 
 // กำหนดค่า Firebase Admin SDK: เชื่อมต่อกับ Google Cloud Firestore
 // ดึง Service Account Key จาก Environment Variable ที่คุณจะตั้งค่าใน Render
