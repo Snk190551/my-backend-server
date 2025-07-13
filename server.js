@@ -13,7 +13,7 @@ const port = process.env.PORT || 3000; // กำหนด Port ที่ Backend
 // อนุญาตให้ Frontend สามารถส่ง Request มายัง Backend ได้ (สำคัญมากสำหรับ CORS)
 // กำหนดค่า CORS ให้ชัดเจนเพื่ออนุญาต Frontend ของคุณ
 app.use(cors({
-    origin: 'https://matherror.netlify.app', // อนุญาตเฉพาะ Frontend URL ของคุณ
+    origin: 'https://matherror.netlify.app',
     methods: ['GET', 'POST', 'PUT', 'DELETE'], // อนุญาต Method ที่จำเป็น
     allowedHeaders: ['Content-Type', 'Authorization'] // อนุญาต Header ที่จำเป็น
 }));
