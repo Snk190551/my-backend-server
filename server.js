@@ -44,47 +44,50 @@ app.get('/', (req, res) => {
   res.send('Hello from Backend Server! This backend is ready for expense tracking.');
 });
 
-// *** API สำหรับจัดการข้อมูลรายรับ-รายจ่าย (ตัวอย่าง - จะพัฒนาเพิ่มเติมในภายหลัง) ***
-// ตัวอย่าง: ดึงรายการรายรับ-รายจ่ายสำหรับผู้ใช้
-app.get('/api/expenses/:userId', async (req, res) => {
+// API สำหรับจัดการข้อมูลรายรับ-รายจ่าย
+// ดึงรายการรายรับ-รายจ่ายสำหรับผู้ใช้
+app.get('/api/transactions/:userId', async (req, res) => {
     const userId = req.params.userId;
     try {
-        // ดึงข้อมูลรายจ่ายจาก Collection 'expenses' ที่เป็นของ userId นี้
-        const expensesSnapshot = await db.collection('expenses').where('userId', '==', userId).orderBy('date', 'desc').get();
-        const expenses = expensesSnapshot.docs.map(doc => ({
+        // ดึงข้อมูลจาก Collection 'transactions' ที่เป็นของ userId นี้
+        // สามารถเพิ่ม filter หรือ order by ได้ในอนาคต
+        const transactionsSnapshot = await db.collection('transactions').where('userId', '==', userId).orderBy('date', 'desc').get();
+        const transactions = transactionsSnapshot.docs.map(doc => ({
             id: doc.id,
-            ...doc.data()
+            ...doc.data(),
+            date: doc.data().date.toDate() // แปลง Timestamp กลับเป็น Date object
         }));
-        res.status(200).json(expenses);
+        res.status(200).json(transactions);
     } catch (error) {
-        console.error('Error fetching expenses:', error);
-        res.status(500).json({ message: 'เกิดข้อผิดพลาดในการดึงข้อมูลรายจ่าย.' });
+        console.error('Error fetching transactions:', error);
+        res.status(500).json({ message: 'เกิดข้อผิดพลาดในการดึงข้อมูลรายการ.' });
     }
 });
 
-// ตัวอย่าง: เพิ่มรายการรายรับ-รายจ่ายใหม่
-app.post('/api/expenses', async (req, res) => {
-    const { userId, amount, category, type, date, description } = req.body;
-    if (!userId || !amount || !category || !type || !date) {
-        return res.status(400).json({ message: 'โปรดระบุข้อมูลที่จำเป็นให้ครบถ้วน.' });
+// เพิ่มรายการรายรับ-รายจ่ายใหม่
+app.post('/api/transactions', async (req, res) => {
+    const { userId, amount, category, type, date, description, account } = req.body;
+    if (!userId || !amount || !category || !type || !date || !account) {
+        return res.status(400).json({ message: 'โปรดระบุข้อมูลที่จำเป็นให้ครบถ้วน (userId, amount, category, type, date, account).' });
     }
     try {
-        const newExpenseRef = await db.collection('expenses').add({
+        const newTransactionRef = await db.collection('transactions').add({
             userId,
             amount: parseFloat(amount), // แปลงเป็นตัวเลข
             category,
             type, // 'expense' หรือ 'income'
             date: new Date(date), // แปลงเป็น Timestamp
-            description: description || ''
+            description: description || '',
+            account // เช่น 'เงินสด', 'บัญชีธนาคาร', 'บัตรเครดิต'
         });
-        res.status(201).json({ message: 'เพิ่มรายการสำเร็จ', id: newExpenseRef.id });
+        res.status(201).json({ message: 'เพิ่มรายการสำเร็จ', id: newTransactionRef.id });
     } catch (error) {
-        console.error('Error adding expense:', error);
+        console.error('Error adding transaction:', error);
         res.status(500).json({ message: 'เกิดข้อผิดพลาดในการเพิ่มรายการ.' });
     }
 });
 
-// *** API สำหรับ Admin (นำกลับมา) ***
+// *** API สำหรับ Admin (นำกลับมาตามคำขอ) ***
 // Route สำหรับ Admin: ดึงข้อมูลผู้ใช้ทั้งหมด
 app.get('/api/admin/users', async (req, res) => {
     try {
